@@ -236,12 +236,12 @@ async fn main() {
     sim.add_gate(Not);
     sim.add_gate(Xor);
     sim.add_gate(And3);
-    let mut board_gates = HashMap::<usize, (f32, f32)>::new();
-    board_gates.insert(0, (200., 0.));
-    board_gates.insert(1, (250., 0.));
-    board_gates.insert(2, (300., 0.));
-    board_gates.insert(3, (350., 0.));
-    board_gates.insert(4, (450., 0.));
+    let mut board_gates = HashMap::<usize, Vec2>::new();
+    board_gates.insert(0, (200., 0.).into());
+    board_gates.insert(1, (250., 0.).into());
+    board_gates.insert(2, (300., 0.).into());
+    board_gates.insert(3, (350., 0.).into());
+    board_gates.insert(4, (450., 0.).into());
 
     let mut dragging: Option<(usize, Vec2)> = None;
     let mut selected_input: Option<(usize, usize, Vec2)> = None;
@@ -286,22 +286,19 @@ async fn main() {
             }
         }
 
-        for (&id, (ref mut x, ref mut y))in &mut board_gates {
+        for (&id, gate_pos)in &mut board_gates {
             if let Some((dragging_id, drag_pos_offset)) = dragging {
                 if dragging_id == id {
                     let pos: Vec2 = mouse_position().into();
                     println!("setting pos {:?}", pos);
 
-                    let pos = pos - drag_pos_offset;
-
-                    *x = pos.x;
-                    *y = pos.y;
+                    *gate_pos = pos - drag_pos_offset;
                 }
             }
 
             let (inputs, outputs) = sim.get_gate_state(id);
             let name = sim.get_gate_name(id);
-            if let Some(mouse_hover) = draw_gate(name, *x, *y, inputs, outputs) {
+            if let Some(mouse_hover) = draw_gate(name, gate_pos.x, gate_pos.y, inputs, outputs) {
                 match mouse_hover {
                     GateMouseHover::Input(input_id, input_pos) => {
                         println!("input id {}", input_id);
@@ -320,8 +317,7 @@ async fn main() {
                     GateMouseHover::Gate(drag_pos) => {
                         if dragging.is_none() {
                             if is_mouse_button_pressed(MouseButton::Left) {
-                                let current_pos = Vec2::new(*x, *y);
-                                let offset = drag_pos - current_pos;
+                                let offset = drag_pos - *gate_pos;
                                 dragging = Some((id, offset));
                             }
                         }
