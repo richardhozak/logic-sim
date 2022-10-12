@@ -92,6 +92,10 @@ trait Gate<const INPUTS: usize, const OUTPUTS: usize> {
     const NAME: &'static str;
 
     fn update(&self, inputs: &[bool; INPUTS], outputs: &mut [bool; OUTPUTS]);
+
+    fn name(&self) -> &'static str {
+        Self::NAME
+    }
 }
 
 struct And;
@@ -150,6 +154,7 @@ struct GateState {
     inputs: Box<[bool]>,
     outputs: Box<[bool]>,
     update_fn: UpdateFn,
+    name: &'static str,
 }
 
 impl GateState {
@@ -180,6 +185,7 @@ impl Simulation {
         let inputs = Box::new([false; INPUTS]);
         let outputs = Box::new([false; OUTPUTS]);
         let id = self.counter;
+        let name = gate.name();
 
         let update_fn: UpdateFn = Box::new(move |inputs, outputs| {
             gate.update(inputs.try_into().unwrap(), outputs.try_into().unwrap())
@@ -191,6 +197,7 @@ impl Simulation {
                 inputs,
                 outputs,
                 update_fn,
+                name,
             },
         );
         self.counter += 1;
@@ -203,6 +210,10 @@ impl Simulation {
     fn get_gate_state(&self, id: usize) -> (&[bool], &[bool]) {
         let gate = self.gates.get(&id).unwrap();
         (&gate.inputs, &gate.outputs)
+    }
+
+    fn get_gate_name(&self, id: usize) -> &'static str {
+        self.gates.get(&id).unwrap().name
     }
 
     fn simulate(&mut self) {
@@ -225,14 +236,16 @@ async fn main() {
     sim.add_gate(Not);
     sim.add_gate(Xor);
     sim.add_gate(And3);
-    let mut board_gates = Vec::<(usize, &'static str, f32, f32)>::new();
-    board_gates.push((0, "AND", 200., 0.));
-    board_gates.push((1, "OR", 250., 0.));
-    board_gates.push((2, "NOT", 300., 0.));
-    board_gates.push((3, "XOR", 350., 0.));
-    board_gates.push((4, "AND3", 450., 0.));
+    let mut board_gates = HashMap::<usize, (f32, f32)>::new();
+    board_gates.insert(0, (200., 0.));
+    board_gates.insert(1, (250., 0.));
+    board_gates.insert(2, (300., 0.));
+    board_gates.insert(3, (350., 0.));
+    board_gates.insert(4, (450., 0.));
 
     let mut dragging: Option<usize> = None;
+    let mut selected_input: Option<(usize, usize)> = None;
+    let mut selected_output: Option<(usize, usize)> = None;
 
     let blackish = Color::from_rgba(0x1e, 0x1e, 0x1e, 0xff);
     let mut last_update = get_time();
@@ -241,6 +254,16 @@ async fn main() {
     loop {
         if is_mouse_button_released(MouseButton::Left) && dragging.is_some() {
             dragging = None;
+        }
+
+        println!("input {:?} output {:?}", selected_input, selected_output);
+
+        if let (Some((input_gate_id, input_id)), Some((output_gate_id, output_id))) =
+            (selected_input, selected_output)
+        {
+            sim.add_connection(output_gate_id, output_id, input_gate_id, input_id);
+            selected_input = None;
+            selected_output = None;
         }
 
         clear_background(blackish);
@@ -263,7 +286,7 @@ async fn main() {
             }
         }
 
-        for &mut (id, name, ref mut x, ref mut y) in &mut board_gates {
+        for (&id, (ref mut x, ref mut y))in &mut board_gates {
             if let Some(dragging_id) = dragging {
                 if dragging_id == id {
                     let pos = mouse_position();
@@ -275,21 +298,30 @@ async fn main() {
             }
 
             let (inputs, outputs) = sim.get_gate_state(id);
+            let name = sim.get_gate_name(id);
             if let Some(mouse_hover) = draw_gate(name, *x, *y, inputs, outputs) {
                 match mouse_hover {
                     GateMouseHover::Input(input_id) => {
                         println!("input id {}", input_id);
-                    },
+
+                        if is_mouse_button_pressed(MouseButton::Left) {
+                            selected_input = Some((id, input_id));
+                        }
+                    }
                     GateMouseHover::Output(output_id) => {
                         println!("output id {}", output_id);
-                    },
+
+                        if is_mouse_button_pressed(MouseButton::Left) {
+                            selected_output = Some((id, output_id));
+                        }
+                    }
                     GateMouseHover::Gate => {
                         if dragging.is_none() {
                             if is_mouse_button_pressed(MouseButton::Left) {
                                 dragging = Some(id);
                             }
                         }
-                    },
+                    }
                 }
             }
         }
