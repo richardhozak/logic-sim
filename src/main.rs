@@ -67,7 +67,10 @@ fn draw_gate(
         draw_rectangle(out_x, out_y, io_w, io_h, if *state { RED } else { GRAY });
 
         if is_point_inside_box(mouse_pos, (out_x, out_y, io_w, io_h)) {
-            mouse_hover = Some(GateMouseHover::Output(index, (x + w, out_y + io_h / 2.).into()));
+            mouse_hover = Some(GateMouseHover::Output(
+                index,
+                (x + w, out_y + io_h / 2.).into(),
+            ));
             draw_rectangle_lines(out_x, out_y, io_w, io_h, 4f32, WHITE);
         }
     }
@@ -286,7 +289,7 @@ async fn main() {
             }
         }
 
-        for (&id, gate_pos)in &mut board_gates {
+        for (&id, gate_pos) in &mut board_gates {
             if let Some((dragging_id, drag_pos_offset)) = dragging {
                 if dragging_id == id {
                     let pos: Vec2 = mouse_position().into();
