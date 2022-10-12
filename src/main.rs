@@ -12,7 +12,7 @@ fn is_point_inside_box(
 enum GateMouseHover {
     Input(usize),
     Output(usize),
-    Gate,
+    Gate(Vec2),
 }
 
 fn draw_gate(
@@ -82,7 +82,7 @@ fn draw_gate(
     if mouse_hover.is_some() {
         mouse_hover
     } else if is_point_inside_box(mouse_pos, (x, y, w, h)) {
-        Some(GateMouseHover::Gate)
+        Some(GateMouseHover::Gate(mouse_pos.into()))
     } else {
         None
     }
@@ -243,7 +243,7 @@ async fn main() {
     board_gates.insert(3, (350., 0.));
     board_gates.insert(4, (450., 0.));
 
-    let mut dragging: Option<usize> = None;
+    let mut dragging: Option<(usize, Vec2)> = None;
     let mut selected_input: Option<(usize, usize)> = None;
     let mut selected_output: Option<(usize, usize)> = None;
 
@@ -287,13 +287,15 @@ async fn main() {
         }
 
         for (&id, (ref mut x, ref mut y))in &mut board_gates {
-            if let Some(dragging_id) = dragging {
+            if let Some((dragging_id, drag_pos_offset)) = dragging {
                 if dragging_id == id {
-                    let pos = mouse_position();
+                    let pos: Vec2 = mouse_position().into();
                     println!("setting pos {:?}", pos);
 
-                    *x = pos.0;
-                    *y = pos.1;
+                    let pos = pos - drag_pos_offset;
+
+                    *x = pos.x;
+                    *y = pos.y;
                 }
             }
 
@@ -315,10 +317,12 @@ async fn main() {
                             selected_output = Some((id, output_id));
                         }
                     }
-                    GateMouseHover::Gate => {
+                    GateMouseHover::Gate(drag_pos) => {
                         if dragging.is_none() {
                             if is_mouse_button_pressed(MouseButton::Left) {
-                                dragging = Some(id);
+                                let current_pos = Vec2::new(*x, *y);
+                                let offset = drag_pos - current_pos;
+                                dragging = Some((id, offset));
                             }
                         }
                     }
