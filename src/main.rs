@@ -1,6 +1,11 @@
 use std::collections::HashMap;
 
+use gates::*;
+use logic_simulation::LogicSimulation;
 use macroquad::{hash, prelude::*, ui::root_ui};
+
+mod gates;
+mod logic_simulation;
 
 fn is_point_inside_box(
     (point_x, point_y): (f32, f32),
@@ -91,149 +96,9 @@ fn draw_gate(
     }
 }
 
-trait Gate<const INPUTS: usize, const OUTPUTS: usize> {
-    const NAME: &'static str;
-
-    fn update(&self, inputs: &[bool; INPUTS], outputs: &mut [bool; OUTPUTS]);
-
-    fn name(&self) -> &'static str {
-        Self::NAME
-    }
-}
-
-struct And;
-
-impl Gate<2, 1> for And {
-    const NAME: &'static str = "AND";
-
-    fn update(&self, inputs: &[bool; 2], outputs: &mut [bool; 1]) {
-        outputs[0] = inputs[0] && inputs[1];
-    }
-}
-
-struct And3;
-
-impl Gate<3, 1> for And3 {
-    const NAME: &'static str = "AND3";
-
-    fn update(&self, inputs: &[bool; 3], outputs: &mut [bool; 1]) {
-        outputs[0] = inputs[0] && inputs[1] && inputs[2];
-    }
-}
-
-struct Or;
-
-impl Gate<2, 1> for Or {
-    const NAME: &'static str = "OR";
-
-    fn update(&self, inputs: &[bool; 2], outputs: &mut [bool; 1]) {
-        outputs[0] = inputs[0] || inputs[1];
-    }
-}
-
-struct Xor;
-
-impl Gate<2, 1> for Xor {
-    const NAME: &'static str = "XOR";
-
-    fn update(&self, inputs: &[bool; 2], outputs: &mut [bool; 1]) {
-        outputs[0] = inputs[0] != inputs[1];
-    }
-}
-
-struct Not;
-
-impl Gate<1, 1> for Not {
-    const NAME: &'static str = "NOT";
-
-    fn update(&self, inputs: &[bool; 1], outputs: &mut [bool; 1]) {
-        outputs[0] = !inputs[0];
-    }
-}
-
-type UpdateFn = Box<dyn Fn(&[bool], &mut [bool])>;
-
-struct GateState {
-    inputs: Box<[bool]>,
-    outputs: Box<[bool]>,
-    update_fn: UpdateFn,
-    name: &'static str,
-}
-
-impl GateState {
-    fn update(&mut self) {
-        (self.update_fn)(&self.inputs, &mut self.outputs);
-    }
-}
-
-struct Simulation {
-    counter: usize,
-    gates: HashMap<usize, GateState>,
-    connections: Vec<(usize, usize, usize, usize)>,
-}
-
-impl Simulation {
-    fn new() -> Simulation {
-        Simulation {
-            counter: 0,
-            gates: HashMap::new(),
-            connections: Vec::new(),
-        }
-    }
-
-    fn add_gate<const INPUTS: usize, const OUTPUTS: usize>(
-        &mut self,
-        gate: impl Gate<INPUTS, OUTPUTS> + 'static,
-    ) {
-        let inputs = Box::new([false; INPUTS]);
-        let outputs = Box::new([false; OUTPUTS]);
-        let id = self.counter;
-        let name = gate.name();
-
-        let update_fn: UpdateFn = Box::new(move |inputs, outputs| {
-            gate.update(inputs.try_into().unwrap(), outputs.try_into().unwrap())
-        });
-
-        self.gates.insert(
-            id,
-            GateState {
-                inputs,
-                outputs,
-                update_fn,
-                name,
-            },
-        );
-        self.counter += 1;
-    }
-
-    fn add_connection(&mut self, from: usize, output: usize, to: usize, input: usize) {
-        self.connections.push((from, output, to, input));
-    }
-
-    fn get_gate_state(&self, id: usize) -> (&[bool], &[bool]) {
-        let gate = self.gates.get(&id).unwrap();
-        (&gate.inputs, &gate.outputs)
-    }
-
-    fn get_gate_name(&self, id: usize) -> &'static str {
-        self.gates.get(&id).unwrap().name
-    }
-
-    fn simulate(&mut self) {
-        for (from, output, to, input) in &self.connections {
-            let output_state = self.gates.get(from).unwrap().outputs[*output];
-            self.gates.get_mut(to).unwrap().inputs[*input] = output_state;
-        }
-
-        for (_, state) in &mut self.gates {
-            state.update();
-        }
-    }
-}
-
 #[macroquad::main("logic-sim")]
 async fn main() {
-    let mut sim = Simulation::new();
+    let mut sim = LogicSimulation::new();
     sim.add_gate(And);
     sim.add_gate(Or);
     sim.add_gate(Not);
