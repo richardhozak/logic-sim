@@ -10,8 +10,8 @@ fn is_point_inside_box(
 }
 
 enum GateMouseHover {
-    Input(usize),
-    Output(usize),
+    Input(usize, Vec2),
+    Output(usize, Vec2),
     Gate(Vec2),
 }
 
@@ -54,7 +54,7 @@ fn draw_gate(
         draw_rectangle(in_x, in_y, io_w, io_h, if *state { RED } else { GRAY });
 
         if is_point_inside_box(mouse_pos, (in_x, in_y, io_w, io_h)) {
-            mouse_hover = Some(GateMouseHover::Input(index));
+            mouse_hover = Some(GateMouseHover::Input(index, (x, in_y + io_h / 2.).into()));
             draw_rectangle_lines(in_x, in_y, io_w, io_h, 4f32, WHITE);
         }
     }
@@ -67,7 +67,7 @@ fn draw_gate(
         draw_rectangle(out_x, out_y, io_w, io_h, if *state { RED } else { GRAY });
 
         if is_point_inside_box(mouse_pos, (out_x, out_y, io_w, io_h)) {
-            mouse_hover = Some(GateMouseHover::Output(index));
+            mouse_hover = Some(GateMouseHover::Output(index, (x + w, out_y + io_h / 2.).into()));
             draw_rectangle_lines(out_x, out_y, io_w, io_h, 4f32, WHITE);
         }
     }
@@ -244,8 +244,8 @@ async fn main() {
     board_gates.insert(4, (450., 0.));
 
     let mut dragging: Option<(usize, Vec2)> = None;
-    let mut selected_input: Option<(usize, usize)> = None;
-    let mut selected_output: Option<(usize, usize)> = None;
+    let mut selected_input: Option<(usize, usize, Vec2)> = None;
+    let mut selected_output: Option<(usize, usize, Vec2)> = None;
 
     let blackish = Color::from_rgba(0x1e, 0x1e, 0x1e, 0xff);
     let mut last_update = get_time();
@@ -258,7 +258,7 @@ async fn main() {
 
         println!("input {:?} output {:?}", selected_input, selected_output);
 
-        if let (Some((input_gate_id, input_id)), Some((output_gate_id, output_id))) =
+        if let (Some((input_gate_id, input_id, _)), Some((output_gate_id, output_id, _))) =
             (selected_input, selected_output)
         {
             sim.add_connection(output_gate_id, output_id, input_gate_id, input_id);
@@ -303,18 +303,18 @@ async fn main() {
             let name = sim.get_gate_name(id);
             if let Some(mouse_hover) = draw_gate(name, *x, *y, inputs, outputs) {
                 match mouse_hover {
-                    GateMouseHover::Input(input_id) => {
+                    GateMouseHover::Input(input_id, input_pos) => {
                         println!("input id {}", input_id);
 
                         if is_mouse_button_pressed(MouseButton::Left) {
-                            selected_input = Some((id, input_id));
+                            selected_input = Some((id, input_id, input_pos));
                         }
                     }
-                    GateMouseHover::Output(output_id) => {
+                    GateMouseHover::Output(output_id, output_pos) => {
                         println!("output id {}", output_id);
 
                         if is_mouse_button_pressed(MouseButton::Left) {
-                            selected_output = Some((id, output_id));
+                            selected_output = Some((id, output_id, output_pos));
                         }
                     }
                     GateMouseHover::Gate(drag_pos) => {
@@ -328,6 +328,18 @@ async fn main() {
                     }
                 }
             }
+        }
+
+        match (selected_input, selected_output) {
+            (Some((_, _, pos)), None) => {
+                let (mouse_x, mouse_y) = mouse_position();
+                draw_line(pos.x, pos.y, mouse_x, mouse_y, 2., WHITE);
+            }
+            (None, Some((_, _, pos))) => {
+                let (mouse_x, mouse_y) = mouse_position();
+                draw_line(pos.x, pos.y, mouse_x, mouse_y, 2., WHITE);
+            }
+            _ => {}
         }
 
         root_ui().window(hash!(), vec2(0.0, 0.0), vec2(200.0, 400.0), |ui| {
