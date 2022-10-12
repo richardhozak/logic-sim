@@ -245,6 +245,7 @@ async fn main() {
     board_gates.insert(2, (300., 0.).into());
     board_gates.insert(3, (350., 0.).into());
     board_gates.insert(4, (450., 0.).into());
+    let mut board_connections: Vec<((usize, usize, Vec2), (usize, usize, Vec2))> = Vec::new();
 
     let mut dragging: Option<(usize, Vec2)> = None;
     let mut selected_input: Option<(usize, usize, Vec2)> = None;
@@ -261,10 +262,16 @@ async fn main() {
 
         println!("input {:?} output {:?}", selected_input, selected_output);
 
-        if let (Some((input_gate_id, input_id, _)), Some((output_gate_id, output_id, _))) =
-            (selected_input, selected_output)
+        if let (
+            Some((input_gate_id, input_id, input_pos)),
+            Some((output_gate_id, output_id, output_pos)),
+        ) = (selected_input, selected_output)
         {
             sim.add_connection(output_gate_id, output_id, input_gate_id, input_id);
+            board_connections.push((
+                (output_gate_id, output_id, output_pos),
+                (input_gate_id, input_id, input_pos),
+            ));
             selected_input = None;
             selected_output = None;
         }
@@ -307,14 +314,14 @@ async fn main() {
                         println!("input id {}", input_id);
 
                         if is_mouse_button_pressed(MouseButton::Left) {
-                            selected_input = Some((id, input_id, input_pos));
+                            selected_input = Some((id, input_id, input_pos - *gate_pos));
                         }
                     }
                     GateMouseHover::Output(output_id, output_pos) => {
                         println!("output id {}", output_id);
 
                         if is_mouse_button_pressed(MouseButton::Left) {
-                            selected_output = Some((id, output_id, output_pos));
+                            selected_output = Some((id, output_id, output_pos - *gate_pos));
                         }
                     }
                     GateMouseHover::Gate(drag_pos) => {
@@ -329,13 +336,41 @@ async fn main() {
             }
         }
 
+        for (
+            (output_gate_id, output_id, output_pos_gate_offset),
+            (input_gate_id, _, input_pos_gate_offset),
+        ) in &board_connections
+        {
+            let (_, outputs) = sim.get_gate_state(*output_gate_id);
+            let output_active = outputs[*output_id];
+
+            let output_gate_pos = board_gates[output_gate_id];
+            let input_gate_pos = board_gates[input_gate_id];
+
+            let output_pos = output_gate_pos + *output_pos_gate_offset;
+            let input_pos = input_gate_pos + *input_pos_gate_offset;
+
+            draw_line(
+                output_pos.x,
+                output_pos.y,
+                input_pos.x,
+                input_pos.y,
+                2.,
+                if output_active { RED } else { WHITE },
+            );
+        }
+
         match (selected_input, selected_output) {
-            (Some((_, _, pos)), None) => {
+            (Some((gate_id, _, offset)), None) => {
                 let (mouse_x, mouse_y) = mouse_position();
+                let gate_pos = board_gates[&gate_id];
+                let pos = gate_pos + offset;
                 draw_line(pos.x, pos.y, mouse_x, mouse_y, 2., WHITE);
             }
-            (None, Some((_, _, pos))) => {
+            (None, Some((gate_id, _, offset))) => {
                 let (mouse_x, mouse_y) = mouse_position();
+                let gate_pos = board_gates[&gate_id];
+                let pos = gate_pos + offset;
                 draw_line(pos.x, pos.y, mouse_x, mouse_y, 2., WHITE);
             }
             _ => {}
