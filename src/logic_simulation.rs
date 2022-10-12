@@ -35,7 +35,7 @@ impl LogicSimulation {
     pub fn add_gate<const INPUTS: usize, const OUTPUTS: usize>(
         &mut self,
         gate: impl Gate<INPUTS, OUTPUTS> + 'static,
-    ) {
+    ) -> usize {
         let inputs = Box::new([false; INPUTS]);
         let outputs = Box::new([false; OUTPUTS]);
         let id = self.counter;
@@ -55,6 +55,7 @@ impl LogicSimulation {
             },
         );
         self.counter += 1;
+        id
     }
 
     pub fn add_connection(&mut self, from: usize, output: usize, to: usize, input: usize) {
