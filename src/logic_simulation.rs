@@ -71,6 +71,11 @@ impl LogicSimulation {
         self.connections.push((from, output, to, input));
     }
 
+    pub fn remove_connection(&mut self, from: usize, output: usize, to: usize, input: usize) {
+        self.connections
+            .retain(|connection| *connection != (from, output, to, input))
+    }
+
     pub fn get_gate_state(&self, id: usize) -> (&[bool], &[bool]) {
         let gate = self.gates.get(&id).unwrap();
         (&gate.inputs, &gate.outputs)

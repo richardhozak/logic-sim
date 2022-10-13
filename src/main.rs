@@ -140,6 +140,13 @@ impl BoardSimulation {
             (input_gate_id, input_id, input_offset),
         ));
     }
+
+    fn remove_connection(&mut self, input: (usize, usize, Vec2), output: (usize, usize, Vec2)) {
+        self.sim
+            .remove_connection(output.0, output.1, input.0, input.1);
+        self.connections
+            .retain(|connection| *connection != (output, input));
+    }
 }
 
 #[macroquad::main("logic-sim")]
@@ -155,6 +162,7 @@ async fn main() {
     let mut selected_input: Option<(usize, usize, Vec2)> = None;
     let mut selected_output: Option<(usize, usize, Vec2)> = None;
     let mut to_remove: Option<usize> = None;
+    let mut connection_to_remove: Option<((usize, usize, Vec2), (usize, usize, Vec2))> = None;
 
     let blackish = Color::from_rgba(0x1e, 0x1e, 0x1e, 0xff);
     let mut last_update = get_time();
@@ -243,15 +251,10 @@ async fn main() {
             }
         }
 
-        if let Some(gate_id) = to_remove.take() {
-            simulation.remove_gate(gate_id);
-        }
+        for (output, input) in &simulation.connections {
+            let (output_gate_id, output_id, output_pos_gate_offset) = output;
+            let (input_gate_id, _, input_pos_gate_offset) = input;
 
-        for (
-            (output_gate_id, output_id, output_pos_gate_offset),
-            (input_gate_id, _, input_pos_gate_offset),
-        ) in &simulation.connections
-        {
             let (_, outputs) = simulation.sim.get_gate_state(*output_gate_id);
             let output_active = outputs[*output_id];
 
@@ -261,14 +264,52 @@ async fn main() {
             let output_pos = output_gate_pos + *output_pos_gate_offset;
             let input_pos = input_gate_pos + *input_pos_gate_offset;
 
+            let opos = Vec2::new(output_pos.x, output_pos.y);
+            let ipos = Vec2::new(input_pos.x, input_pos.y);
+            let mpos: Vec2 = mouse_position().into();
+
+            let dm = mpos - opos;
+            let d1 = ipos - opos;
+            let cross = dm.perp_dot(d1);
+
+            let is_between = if d1.x.abs() > d1.y.abs() {
+                if d1.x > 0.0 {
+                    opos.x <= mpos.x && mpos.x <= ipos.x
+                } else {
+                    ipos.x <= mpos.x && mpos.x <= opos.x
+                }
+            } else {
+                if d1.y > 0.0 {
+                    opos.y <= mpos.y && mpos.y <= ipos.y
+                } else {
+                    ipos.y <= mpos.y && mpos.y <= opos.y
+                }
+            };
+
+            let mouse_over_line = is_between && cross.abs() < 1000.;
+
+            if mouse_over_line {
+                if is_mouse_button_pressed(MouseButton::Right) {
+                    connection_to_remove = Some((*input, *output));
+                }
+            }
+
             draw_line(
                 output_pos.x,
                 output_pos.y,
                 input_pos.x,
                 input_pos.y,
-                2.,
+                if mouse_over_line { 4. } else { 2. },
                 if output_active { RED } else { WHITE },
             );
+        }
+
+        if let Some(gate_id) = to_remove.take() {
+            simulation.remove_gate(gate_id);
+        }
+
+        if let Some((input, output)) = connection_to_remove.take() {
+            simulation.remove_connection(input, output);
         }
 
         match (selected_input, selected_output) {
