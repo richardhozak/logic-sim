@@ -179,8 +179,6 @@ async fn main() {
             selected_output = None;
         }
 
-        println!("input {:?} output {:?}", selected_input, selected_output);
-
         if let (Some(input), Some(output)) = (selected_input, selected_output) {
             simulation.add_connection(input, output);
             selected_input = None;
@@ -198,11 +196,7 @@ async fn main() {
 
             let iterations = iterations.trunc() as usize;
 
-            // println!("{:.5} {:.5} {:.5} {:.5} {:<5} {:.5}", elapsed, period, elapsed / period, elapsed % period, iterations, elapsed_remainder);
-
-            // println!("iterations {}", iterations);
             for _ in 0..iterations {
-                // println!("tick");
                 simulation.sim.simulate();
             }
         }
@@ -211,8 +205,6 @@ async fn main() {
             if let Some((dragging_id, drag_pos_offset)) = dragging {
                 if dragging_id == id {
                     let pos: Vec2 = mouse_position().into();
-                    println!("setting pos {:?}", pos);
-
                     *gate_pos = pos - drag_pos_offset;
                 }
             }
@@ -222,15 +214,11 @@ async fn main() {
             if let Some(mouse_hover) = draw_gate(name, gate_pos.x, gate_pos.y, inputs, outputs) {
                 match mouse_hover {
                     GateMouseHover::Input(input_id, input_pos) => {
-                        println!("input id {}", input_id);
-
                         if is_mouse_button_pressed(MouseButton::Left) {
                             selected_input = Some((id, input_id, input_pos - *gate_pos));
                         }
                     }
                     GateMouseHover::Output(output_id, output_pos) => {
-                        println!("output id {}", output_id);
-
                         if is_mouse_button_pressed(MouseButton::Left) {
                             selected_output = Some((id, output_id, output_pos - *gate_pos));
                         }
