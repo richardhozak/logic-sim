@@ -155,6 +155,7 @@ async fn main() {
     simulation.add_gate(And, vec2(220., 20.));
     simulation.add_gate(Or, vec2(300., 20.));
     simulation.add_gate(Not, vec2(390., 20.));
+    simulation.add_gate(Yes, vec2(390., 60.));
     simulation.add_gate(Xor, vec2(460., 20.));
     simulation.add_gate(And3, vec2(550., 20.));
 
@@ -329,6 +330,10 @@ async fn main() {
 
             if ui.button(None, "NOT") {
                 simulation.add_gate(Not, Vec2::new(screen_width() / 2., screen_height() / 2.));
+            }
+
+            if ui.button(None, "YES") {
+                simulation.add_gate(Yes, Vec2::new(screen_width() / 2., screen_height() / 2.));
             }
 
             if ui.button(None, "XOR") {

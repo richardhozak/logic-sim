@@ -57,3 +57,13 @@ impl Gate<1, 1> for Not {
         outputs[0] = !inputs[0];
     }
 }
+
+pub struct Yes;
+
+impl Gate<1, 1> for Yes {
+    const NAME: &'static str = "YES";
+
+    fn update(&self, inputs: &[bool; 1], outputs: &mut [bool; 1]) {
+        outputs[0] = inputs[0];
+    }
+}
