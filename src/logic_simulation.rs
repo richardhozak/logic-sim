@@ -58,6 +58,15 @@ impl LogicSimulation {
         id
     }
 
+    pub fn remove_gate(&mut self, id: usize) {
+        if let Some(_) = self.gates.remove(&id) {
+            self.connections
+                .retain(|(output_gate_id, _, input_gate_id, _)| {
+                    *output_gate_id != id && *input_gate_id != id
+                });
+        }
+    }
+
     pub fn add_connection(&mut self, from: usize, output: usize, to: usize, input: usize) {
         self.connections.push((from, output, to, input));
     }
@@ -72,9 +81,23 @@ impl LogicSimulation {
     }
 
     pub fn simulate(&mut self) {
+        // set all gates' inputs to false, we always propagate output state to
+        // input state for all gates below, and this way we can check if
+        // something changed the input
+        for (_, state) in &mut self.gates {
+            for input in state.inputs.iter_mut() {
+                *input = false;
+            }
+        }
+
         for (from, output, to, input) in &self.connections {
             let output_state = self.gates.get(from).unwrap().outputs[*output];
-            self.gates.get_mut(to).unwrap().inputs[*input] = output_state;
+            let input_state = &mut self.gates.get_mut(to).unwrap().inputs[*input];
+            if *input_state {
+                // input was already set to true, do not allow it to be switched off
+                continue;
+            }
+            *input_state = output_state;
         }
 
         for (_, state) in &mut self.gates {

@@ -120,6 +120,14 @@ impl BoardSimulation {
         self.gates.insert(gate_id, pos);
     }
 
+    fn remove_gate(&mut self, gate_id: usize) {
+        self.sim.remove_gate(gate_id);
+        if let Some(_) = self.gates.remove(&gate_id) {
+            self.connections
+                .retain(|(output, input)| output.0 != gate_id && input.0 != gate_id);
+        }
+    }
+
     fn add_connection(
         &mut self,
         (input_gate_id, input_id, input_offset): (usize, usize, Vec2),
@@ -137,15 +145,16 @@ impl BoardSimulation {
 #[macroquad::main("logic-sim")]
 async fn main() {
     let mut simulation = BoardSimulation::new();
-    simulation.add_gate(And, vec2(200., 0.));
-    simulation.add_gate(Or, vec2(250., 0.));
-    simulation.add_gate(Not, vec2(300., 0.));
-    simulation.add_gate(Xor, vec2(350., 0.));
-    simulation.add_gate(And3, vec2(400., 0.));
+    simulation.add_gate(And, vec2(220., 20.));
+    simulation.add_gate(Or, vec2(300., 20.));
+    simulation.add_gate(Not, vec2(390., 20.));
+    simulation.add_gate(Xor, vec2(460., 20.));
+    simulation.add_gate(And3, vec2(550., 20.));
 
     let mut dragging: Option<(usize, Vec2)> = None;
     let mut selected_input: Option<(usize, usize, Vec2)> = None;
     let mut selected_output: Option<(usize, usize, Vec2)> = None;
+    let mut to_remove: Option<usize> = None;
 
     let blackish = Color::from_rgba(0x1e, 0x1e, 0x1e, 0xff);
     let mut last_update = get_time();
@@ -225,9 +234,17 @@ async fn main() {
                                 dragging = Some((id, offset));
                             }
                         }
+
+                        if is_mouse_button_pressed(MouseButton::Right) {
+                            to_remove = Some(id);
+                        }
                     }
                 }
             }
+        }
+
+        if let Some(gate_id) = to_remove.take() {
+            simulation.remove_gate(gate_id);
         }
 
         for (
