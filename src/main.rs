@@ -151,9 +151,15 @@ async fn main() {
     let mut last_update = get_time();
     let mut frequency = 10f32;
     let mut elapsed_remainder = 0f64;
+
     loop {
         if is_mouse_button_released(MouseButton::Left) && dragging.is_some() {
             dragging = None;
+        }
+
+        if is_mouse_button_released(MouseButton::Right) {
+            selected_input = None;
+            selected_output = None;
         }
 
         println!("input {:?} output {:?}", selected_input, selected_output);
