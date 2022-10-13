@@ -1,6 +1,8 @@
 ### logic-sim
 
-Simple logic simulator, you cannot add gates to board dynamically yet, but connections to predefined gates work as intended.
+Simple logic simulator.
+
+You can add logic gates to simulation and change the frequency of the simulation.
 
 ![screenshot](/screenshot.png)
 

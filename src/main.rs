@@ -272,6 +272,26 @@ async fn main() {
 
         root_ui().window(hash!(), vec2(0.0, 0.0), vec2(200.0, 400.0), |ui| {
             ui.slider(hash!(), "Frequency Hz", 1f32..100f32, &mut frequency);
+            ui.label(None, "Add Gate:");
+            if ui.button(None, "AND") {
+                simulation.add_gate(And, Vec2::new(screen_width() / 2., screen_height() / 2.));
+            }
+
+            if ui.button(None, "OR") {
+                simulation.add_gate(Or, Vec2::new(screen_width() / 2., screen_height() / 2.));
+            }
+
+            if ui.button(None, "NOT") {
+                simulation.add_gate(Not, Vec2::new(screen_width() / 2., screen_height() / 2.));
+            }
+
+            if ui.button(None, "XOR") {
+                simulation.add_gate(Xor, Vec2::new(screen_width() / 2., screen_height() / 2.));
+            }
+
+            if ui.button(None, "AND3") {
+                simulation.add_gate(And3, Vec2::new(screen_width() / 2., screen_height() / 2.));
+            }
         });
 
         next_frame().await
