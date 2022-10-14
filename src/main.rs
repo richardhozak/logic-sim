@@ -1,7 +1,4 @@
-use std::collections::HashMap;
-
 use gates::*;
-use logic_simulation::LogicSimulation;
 use macroquad::{hash, prelude::*, ui::root_ui};
 
 mod gates;
@@ -96,62 +93,114 @@ fn draw_gate(
     }
 }
 
-struct BoardSimulation {
-    sim: LogicSimulation,
-    gates: HashMap<usize, Vec2>,
-    connections: Vec<((usize, usize, Vec2), (usize, usize, Vec2))>,
-}
+mod board {
+    use std::collections::HashMap;
 
-impl BoardSimulation {
-    fn new() -> BoardSimulation {
-        BoardSimulation {
-            sim: LogicSimulation::new(),
-            gates: HashMap::new(),
-            connections: Vec::new(),
+    use macroquad::prelude::Vec2;
+
+    use crate::{gates::Gate, logic_simulation::LogicSimulation};
+
+    pub(crate) struct BoardSimulation {
+        sim: LogicSimulation,
+        gates: HashMap<usize, Vec2>,
+        connections: Vec<((usize, usize, Vec2), (usize, usize, Vec2))>,
+    }
+
+    impl BoardSimulation {
+        pub(crate) fn new() -> BoardSimulation {
+            BoardSimulation {
+                sim: LogicSimulation::new(),
+                gates: HashMap::new(),
+                connections: Vec::new(),
+            }
         }
-    }
 
-    fn add_gate<const INPUTS: usize, const OUTPUTS: usize>(
-        &mut self,
-        gate: impl Gate<INPUTS, OUTPUTS> + 'static,
-        pos: Vec2,
-    ) {
-        let gate_id = self.sim.add_gate(gate);
-        self.gates.insert(gate_id, pos);
-    }
-
-    fn remove_gate(&mut self, gate_id: usize) {
-        self.sim.remove_gate(gate_id);
-        if let Some(_) = self.gates.remove(&gate_id) {
-            self.connections
-                .retain(|(output, input)| output.0 != gate_id && input.0 != gate_id);
+        pub(crate) fn add_gate<const INPUTS: usize, const OUTPUTS: usize>(
+            &mut self,
+            gate: impl Gate<INPUTS, OUTPUTS> + 'static,
+            pos: Vec2,
+        ) {
+            let gate_id = self.sim.add_gate(gate);
+            self.gates.insert(gate_id, pos);
         }
-    }
 
-    fn add_connection(
-        &mut self,
-        (input_gate_id, input_id, input_offset): (usize, usize, Vec2),
-        (output_gate_id, output_id, output_offset): (usize, usize, Vec2),
-    ) {
-        self.sim
-            .add_connection(output_gate_id, output_id, input_gate_id, input_id);
-        self.connections.push((
-            (output_gate_id, output_id, output_offset),
-            (input_gate_id, input_id, input_offset),
-        ));
-    }
+        pub(crate) fn remove_gate(&mut self, gate_id: usize) {
+            self.sim.remove_gate(gate_id);
+            if let Some(_) = self.gates.remove(&gate_id) {
+                self.connections
+                    .retain(|(output, input)| output.0 != gate_id && input.0 != gate_id);
+            }
+        }
 
-    fn remove_connection(&mut self, input: (usize, usize, Vec2), output: (usize, usize, Vec2)) {
-        self.sim
-            .remove_connection(output.0, output.1, input.0, input.1);
-        self.connections
-            .retain(|connection| *connection != (output, input));
+        pub(crate) fn add_connection(
+            &mut self,
+            (input_gate_id, input_id, input_offset): (usize, usize, Vec2),
+            (output_gate_id, output_id, output_offset): (usize, usize, Vec2),
+        ) {
+            self.sim
+                .add_connection(output_gate_id, output_id, input_gate_id, input_id);
+            self.connections.push((
+                (output_gate_id, output_id, output_offset),
+                (input_gate_id, input_id, input_offset),
+            ));
+        }
+
+        pub(crate) fn remove_connection(&mut self, input: (usize, usize), output: (usize, usize)) {
+            self.sim
+                .remove_connection(output.0, output.1, input.0, input.1);
+
+            self.connections.retain(
+                |((output_gate_id, output_id, _), (input_gate_id, input_id, _))| {
+                    ((*output_gate_id, *output_id), (*input_gate_id, *input_id)) != (output, input)
+                },
+            )
+        }
+
+        pub(crate) fn simulate(&mut self) {
+            self.sim.simulate()
+        }
+
+        pub(crate) fn gate_iter_mut(
+            &mut self,
+        ) -> impl Iterator<Item = (usize, &mut Vec2, &str, (&[bool], &[bool]))> + '_ {
+            self.gates.iter_mut().map(|(id, pos)| {
+                let name = self.sim.get_gate_name(*id);
+                let state = self.sim.get_gate_state(*id);
+                (*id, pos, name, state)
+            })
+        }
+
+        pub(crate) fn connection_iter(
+            &self,
+        ) -> impl Iterator<Item = (((usize, usize, Vec2), bool), ((usize, usize, Vec2), bool))> + '_
+        {
+            self.connections.iter().map(
+                |(
+                    (output_gate_id, output_id, output_offset),
+                    (input_gate_id, input_id, input_offset),
+                )| {
+                    let output_state = self.sim.get_gate_state(*output_gate_id).1[*output_id];
+                    let input_state = self.sim.get_gate_state(*input_gate_id).0[*input_id];
+                    let output_pos = self.gates[output_gate_id] + *output_offset;
+                    let input_pos = self.gates[input_gate_id] + *input_offset;
+
+                    (
+                        ((*output_gate_id, *output_id, output_pos), output_state),
+                        ((*input_gate_id, *input_id, input_pos), input_state),
+                    )
+                },
+            )
+        }
+
+        pub(crate) fn gate_pos(&self, gate_id: usize) -> Vec2 {
+            self.gates[&gate_id]
+        }
     }
 }
 
 #[macroquad::main("logic-sim")]
 async fn main() {
-    let mut simulation = BoardSimulation::new();
+    let mut simulation = board::BoardSimulation::new();
     simulation.add_gate(And, vec2(220., 20.));
     simulation.add_gate(Or, vec2(220., 100.));
     simulation.add_gate(Xor, vec2(220., 180.));
@@ -165,7 +214,7 @@ async fn main() {
     let mut selected_input: Option<(usize, usize, Vec2)> = None;
     let mut selected_output: Option<(usize, usize, Vec2)> = None;
     let mut to_remove: Option<usize> = None;
-    let mut connection_to_remove: Option<((usize, usize, Vec2), (usize, usize, Vec2))> = None;
+    let mut connection_to_remove: Option<((usize, usize), (usize, usize))> = None;
 
     let blackish = Color::from_rgba(0x1e, 0x1e, 0x1e, 0xff);
     let mut last_update = get_time();
@@ -200,60 +249,51 @@ async fn main() {
             let iterations = iterations.trunc() as usize;
 
             for _ in 0..iterations {
-                simulation.sim.simulate();
+                simulation.simulate();
             }
         }
 
-        for (&id, gate_pos) in &mut simulation.gates {
+        for (gate_id, gate_pos, gate_name, gate_state) in simulation.gate_iter_mut() {
             if let Some((dragging_id, drag_pos_offset)) = dragging {
-                if dragging_id == id {
+                if dragging_id == gate_id {
                     let pos: Vec2 = mouse_position().into();
                     *gate_pos = pos - drag_pos_offset;
                 }
             }
 
-            let (inputs, outputs) = simulation.sim.get_gate_state(id);
-            let name = simulation.sim.get_gate_name(id);
-            if let Some(mouse_hover) = draw_gate(name, gate_pos.x, gate_pos.y, inputs, outputs) {
+            let (inputs, outputs) = gate_state;
+            if let Some(mouse_hover) = draw_gate(gate_name, gate_pos.x, gate_pos.y, inputs, outputs)
+            {
                 match mouse_hover {
                     GateMouseHover::Input(input_id, input_pos) => {
                         if is_mouse_button_pressed(MouseButton::Left) {
-                            selected_input = Some((id, input_id, input_pos - *gate_pos));
+                            selected_input = Some((gate_id, input_id, input_pos - *gate_pos));
                         }
                     }
                     GateMouseHover::Output(output_id, output_pos) => {
                         if is_mouse_button_pressed(MouseButton::Left) {
-                            selected_output = Some((id, output_id, output_pos - *gate_pos));
+                            selected_output = Some((gate_id, output_id, output_pos - *gate_pos));
                         }
                     }
                     GateMouseHover::Gate(drag_pos) => {
                         if dragging.is_none() {
                             if is_mouse_button_pressed(MouseButton::Left) {
                                 let offset = drag_pos - *gate_pos;
-                                dragging = Some((id, offset));
+                                dragging = Some((gate_id, offset));
                             }
                         }
 
                         if is_mouse_button_pressed(MouseButton::Right) {
-                            to_remove = Some(id);
+                            to_remove = Some(gate_id);
                         }
                     }
                 }
             }
         }
 
-        for (output, input) in &simulation.connections {
-            let (output_gate_id, output_id, output_pos_gate_offset) = output;
-            let (input_gate_id, _, input_pos_gate_offset) = input;
-
-            let (_, outputs) = simulation.sim.get_gate_state(*output_gate_id);
-            let output_active = outputs[*output_id];
-
-            let output_gate_pos = simulation.gates[output_gate_id];
-            let input_gate_pos = simulation.gates[input_gate_id];
-
-            let output_pos = output_gate_pos + *output_pos_gate_offset;
-            let input_pos = input_gate_pos + *input_pos_gate_offset;
+        for (output, input) in simulation.connection_iter() {
+            let ((output_gate_id, output_id, output_pos), output_active) = output;
+            let ((input_gate_id, input_id, input_pos), _) = input;
 
             let opos = Vec2::new(output_pos.x, output_pos.y);
             let ipos = Vec2::new(input_pos.x, input_pos.y);
@@ -281,7 +321,8 @@ async fn main() {
 
             if mouse_over_line {
                 if is_mouse_button_pressed(MouseButton::Right) {
-                    connection_to_remove = Some((*input, *output));
+                    connection_to_remove =
+                        Some(((input_gate_id, input_id), (output_gate_id, output_id)));
                 }
             }
 
@@ -306,13 +347,13 @@ async fn main() {
         match (selected_input, selected_output) {
             (Some((gate_id, _, offset)), None) => {
                 let (mouse_x, mouse_y) = mouse_position();
-                let gate_pos = simulation.gates[&gate_id];
+                let gate_pos = simulation.gate_pos(gate_id);
                 let pos = gate_pos + offset;
                 draw_line(pos.x, pos.y, mouse_x, mouse_y, 2., WHITE);
             }
             (None, Some((gate_id, _, offset))) => {
                 let (mouse_x, mouse_y) = mouse_position();
-                let gate_pos = simulation.gates[&gate_id];
+                let gate_pos = simulation.gate_pos(gate_id);
                 let pos = gate_pos + offset;
                 draw_line(pos.x, pos.y, mouse_x, mouse_y, 2., WHITE);
             }
