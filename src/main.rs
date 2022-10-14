@@ -153,11 +153,13 @@ impl BoardSimulation {
 async fn main() {
     let mut simulation = BoardSimulation::new();
     simulation.add_gate(And, vec2(220., 20.));
-    simulation.add_gate(Or, vec2(300., 20.));
-    simulation.add_gate(Not, vec2(390., 20.));
-    simulation.add_gate(Yes, vec2(390., 60.));
-    simulation.add_gate(Xor, vec2(460., 20.));
-    simulation.add_gate(And3, vec2(550., 20.));
+    simulation.add_gate(Or, vec2(220., 100.));
+    simulation.add_gate(Xor, vec2(220., 180.));
+    simulation.add_gate(Nand, vec2(220., 260.));
+    simulation.add_gate(Nor, vec2(220., 340.));
+    simulation.add_gate(Xnor, vec2(220., 420.));
+    simulation.add_gate(Yes, vec2(220., 500.));
+    simulation.add_gate(Not, vec2(220., 550.));
 
     let mut dragging: Option<(usize, Vec2)> = None;
     let mut selected_input: Option<(usize, usize, Vec2)> = None;
@@ -320,28 +322,38 @@ async fn main() {
         root_ui().window(hash!(), vec2(0.0, 0.0), vec2(200.0, 400.0), |ui| {
             ui.slider(hash!(), "Frequency Hz", 1f32..100f32, &mut frequency);
             ui.label(None, "Add Gate:");
+            let screen_middle = Vec2::new(screen_width() / 2., screen_height() / 2.);
+
             if ui.button(None, "AND") {
-                simulation.add_gate(And, Vec2::new(screen_width() / 2., screen_height() / 2.));
+                simulation.add_gate(And, screen_middle);
             }
 
             if ui.button(None, "OR") {
-                simulation.add_gate(Or, Vec2::new(screen_width() / 2., screen_height() / 2.));
-            }
-
-            if ui.button(None, "NOT") {
-                simulation.add_gate(Not, Vec2::new(screen_width() / 2., screen_height() / 2.));
-            }
-
-            if ui.button(None, "YES") {
-                simulation.add_gate(Yes, Vec2::new(screen_width() / 2., screen_height() / 2.));
+                simulation.add_gate(Or, screen_middle);
             }
 
             if ui.button(None, "XOR") {
-                simulation.add_gate(Xor, Vec2::new(screen_width() / 2., screen_height() / 2.));
+                simulation.add_gate(Xor, screen_middle);
             }
 
-            if ui.button(None, "AND3") {
-                simulation.add_gate(And3, Vec2::new(screen_width() / 2., screen_height() / 2.));
+            if ui.button(None, "NAND") {
+                simulation.add_gate(Nand, screen_middle);
+            }
+
+            if ui.button(None, "NOR") {
+                simulation.add_gate(Nor, screen_middle);
+            }
+
+            if ui.button(None, "XNOR") {
+                simulation.add_gate(Xnor, screen_middle);
+            }
+
+            if ui.button(None, "YES") {
+                simulation.add_gate(Yes, screen_middle);
+            }
+
+            if ui.button(None, "NOT") {
+                simulation.add_gate(Not, screen_middle);
             }
         });
 
