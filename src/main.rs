@@ -1,5 +1,9 @@
 use gates::*;
-use macroquad::{hash, prelude::*, ui::root_ui};
+use macroquad::{
+    hash,
+    prelude::*,
+    ui::{root_ui, Skin},
+};
 
 use crate::board::BoardSimulation;
 
@@ -215,6 +219,17 @@ async fn main() {
     let mut frequency = 10f32;
     let mut elapsed_remainder = 0f64;
 
+    let skin = {
+        let label_style = root_ui().style_builder().text_color(WHITE).build();
+
+        Skin {
+            label_style,
+            ..root_ui().default_skin()
+        }
+    };
+
+    root_ui().push_skin(&skin);
+
     loop {
         if is_mouse_button_released(MouseButton::Left) && dragging.is_some() {
             dragging = None;
@@ -354,43 +369,29 @@ async fn main() {
             _ => {}
         }
 
-        root_ui().window(hash!(), vec2(0.0, 0.0), vec2(200.0, 400.0), |ui| {
-            ui.slider(hash!(), "Frequency Hz", 1f32..100f32, &mut frequency);
-            ui.label(None, "Add Gate:");
-            let screen_middle = Vec2::new(screen_width() / 2., screen_height() / 2.);
+        {
+            root_ui().slider(hash!(), "Frequency (Hz)", 1f32..100f32, &mut frequency);
+            root_ui().label(None, "Add Gate:");
 
-            if ui.button(None, "AND") {
-                simulation.add_gate(And, screen_middle);
+            fn add_gate_btn<const INPUTS: usize, const OUTPUTS: usize>(
+                gate: impl Gate<INPUTS, OUTPUTS> + 'static,
+                simulation: &mut BoardSimulation,
+            ) {
+                let screen_middle = Vec2::new(screen_width() / 2., screen_height() / 2.);
+                if root_ui().button(None, format!("{:<5}", gate.name())) {
+                    simulation.add_gate(gate, screen_middle);
+                }
             }
 
-            if ui.button(None, "OR") {
-                simulation.add_gate(Or, screen_middle);
-            }
-
-            if ui.button(None, "XOR") {
-                simulation.add_gate(Xor, screen_middle);
-            }
-
-            if ui.button(None, "NAND") {
-                simulation.add_gate(Nand, screen_middle);
-            }
-
-            if ui.button(None, "NOR") {
-                simulation.add_gate(Nor, screen_middle);
-            }
-
-            if ui.button(None, "XNOR") {
-                simulation.add_gate(Xnor, screen_middle);
-            }
-
-            if ui.button(None, "YES") {
-                simulation.add_gate(Yes, screen_middle);
-            }
-
-            if ui.button(None, "NOT") {
-                simulation.add_gate(Not, screen_middle);
-            }
-        });
+            add_gate_btn(And, &mut simulation);
+            add_gate_btn(Nand, &mut simulation);
+            add_gate_btn(Or, &mut simulation);
+            add_gate_btn(Nor, &mut simulation);
+            add_gate_btn(Xor, &mut simulation);
+            add_gate_btn(Xnor, &mut simulation);
+            add_gate_btn(Yes, &mut simulation);
+            add_gate_btn(Not, &mut simulation);
+        }
 
         next_frame().await
     }
