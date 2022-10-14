@@ -1,6 +1,8 @@
 use gates::*;
 use macroquad::{hash, prelude::*, ui::root_ui};
 
+use crate::board::BoardSimulation;
+
 mod gates;
 mod logic_simulation;
 
@@ -200,15 +202,7 @@ mod board {
 
 #[macroquad::main("logic-sim")]
 async fn main() {
-    let mut simulation = board::BoardSimulation::new();
-    simulation.add_gate(And, vec2(220., 20.));
-    simulation.add_gate(Or, vec2(220., 100.));
-    simulation.add_gate(Xor, vec2(220., 180.));
-    simulation.add_gate(Nand, vec2(220., 260.));
-    simulation.add_gate(Nor, vec2(220., 340.));
-    simulation.add_gate(Xnor, vec2(220., 420.));
-    simulation.add_gate(Yes, vec2(220., 500.));
-    simulation.add_gate(Not, vec2(220., 550.));
+    let mut simulation = BoardSimulation::new();
 
     let mut dragging: Option<(usize, Vec2)> = None;
     let mut selected_input: Option<(usize, usize, Vec2)> = None;
